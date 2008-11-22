@@ -4,7 +4,6 @@ STDOUT.sync = true
 
 $:.unshift File.join(File.dirname(__FILE__), *%w[.. lib])
 
-require 'rubygems'
 require 'optparse'
 require 'drb'
 
