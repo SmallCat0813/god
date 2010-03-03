@@ -16,11 +16,12 @@ module God
     self.syslog ||= true
     
     # Instantiate a new Logger object
-    def initialize
-      super($stdout)
+    def initialize(io = $stdout)
+      super(io)
       self.logs = {}
       @mutex = Mutex.new
       @capture = nil
+      @spool = Time.now - 10
       @templogio = StringIO.new
       @templog = SimpleLogger.new(@templogio)
       @templog.level = Logger::INFO
@@ -57,19 +58,27 @@ module God
     def log(watch, level, text)
       # initialize watch log if necessary
       self.logs[watch.name] ||= Timeline.new(God::LOG_BUFFER_SIZE_DEFAULT) if watch
-      
+
       # push onto capture and timeline for the given watch
-      @templogio.truncate(0)
-      @templogio.rewind
-      @templog.send(level, text % [])
-      @mutex.synchronize do
-        @capture.puts(@templogio.string.dup) if @capture
-        self.logs[watch.name] << [Time.now, @templogio.string.dup] if watch
+      if @capture || (watch && (Time.now - @spool < 2))
+        @mutex.synchronize do
+          @templogio.truncate(0)
+          @templogio.rewind
+          @templog.send(level, text)
+
+          message = @templogio.string.dup
+
+          if @capture
+            @capture.puts(message)
+          else
+            self.logs[watch.name] << [Time.now, message]
+          end
+        end
       end
-      
+
       # send to regular logger
-      self.send(level, text % [])
-      
+      self.send(level, text)
+
       # send to syslog
       Syslog.send(SYSLOG_EQUIVALENTS[level], text) if Logger.syslog
     end
@@ -85,6 +94,7 @@ module God
       
       # get and join lines since given time
       @mutex.synchronize do
+        @spool = Time.now
         self.logs[watch_name].select do |x|
           x.first > since
         end.map do |x|
@@ -110,7 +120,7 @@ module God
     # Returns String
     def finish_capture
       @mutex.synchronize do
-        cap = @capture.string
+        cap = @capture.string if @capture
         @capture = nil
         cap
       end

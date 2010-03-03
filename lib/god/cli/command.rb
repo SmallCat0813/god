@@ -66,22 +66,47 @@ module God
       end
       
       def status_command
-        watches = {}
-        @server.status.each do |name, status|
+        exitcode = 0
+        statuses = @server.status
+        groups = {}
+        statuses.each do |name, status|
           g = status[:group] || ''
-          unless watches.has_key?(g)
-            watches[g] = {}
-          end
-          watches[g][name] = status
+          groups[g] ||= {}
+          groups[g][name] = status
         end
-        watches.keys.sort.each do |group|
-          puts "#{group}:" unless group.empty?
-          watches[group].keys.sort.each do |name|
-            state = watches[group][name][:state]
-            print "  " unless group.empty?
-            puts "#{name}: #{state}"
+        
+        if item = @args[1]
+          if single = statuses[item]
+            # specified task (0 -> up, 1 -> unmonitored, 2 -> other)
+            state = single[:state]
+            puts "#{item}: #{state}"
+            exitcode = state == :up ? 0 : (state == :unmonitored ? 1 : 2) 
+          elsif groups[item]
+            # specified group (0 -> up, N -> other)
+            puts "#{item}:"
+            groups[item].keys.sort.each do |name|
+              state = groups[item][name][:state]
+              print "  "
+              puts "#{name}: #{state}"
+              exitcode += 1 unless state == :up
+            end
+          else
+            puts "Task or Group '#{item}' not found."
+            exit(1)
+          end
+        else
+          # show all groups and watches
+          groups.keys.sort.each do |group|
+            puts "#{group}:" unless group.empty?
+            groups[group].keys.sort.each do |name|
+              state = groups[group][name][:state]
+              print "  " unless group.empty?
+              puts "#{name}: #{state}"
+            end
           end
         end
+        
+        exit(exitcode)
       end
       
       def signal_command
@@ -117,11 +142,12 @@ module God
             exit!
           end
           
+          puts "Please wait..."
           t = Time.at(0)
           loop do
             print @server.running_log(name, t)
             t = Time.now
-            sleep 1
+            sleep 0.25
           end
         rescue God::NoSuchWatchError
           puts "No such watch"
@@ -189,6 +215,7 @@ module God
             puts "killing process"
             
             ::Process.kill('KILL', pid)
+            ::Process.waitpid(pid)
           rescue => e
             puts e.message
             puts e.backtrace.join("\n")

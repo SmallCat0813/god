@@ -144,7 +144,7 @@ module God
     #
     # Returns Task (self)
     def move(to_state)
-      if Thread.current != self.driver.thread
+      if !self.driver.in_driver_context?
         # called from outside Driver
         
         # send an async message to Driver
@@ -235,7 +235,7 @@ module God
     #
     # Returns Task (self)
     def action(a, c = nil)
-      if Thread.current != self.driver.thread
+      if !self.driver.in_driver_context?
         # called from outside Driver
         
         # send an async message to Driver
@@ -299,7 +299,7 @@ module God
     end
     
     def unregister!
-      # override if necessary
+      driver.shutdown
     end
     
     ###########################################################################
@@ -318,7 +318,15 @@ module God
       metric = self.directory[condition]
       
       # run the test
-      result = condition.test
+      begin
+        result = condition.test
+      rescue Object => e
+        cname = condition.class.to_s.split('::').last
+        message = format("Unhandled exception in %s condition - (%s): %s\n%s",
+                         cname, e.class, e.message, e.backtrace.join("\n"))
+        applog(self, :error, message)
+        result = false
+      end
       
       # log
       messages = self.log_line(self, metric, condition, result)
@@ -372,7 +380,7 @@ module God
       messages = self.log_line(self, metric, condition, true)
       
       # notify
-      if result && condition.notify
+      if condition.notify
         self.notify(condition, messages.last)
       end
       
@@ -479,11 +487,15 @@ module God
       # notify each contact
       resolved_contacts.each do |c|
         host = `hostname`.chomp rescue 'none'
-        c.notify(message, Time.now, spec[:priority], spec[:category], host)
-        
-        msg = "#{condition.watch.name} #{c.info ? c.info : "notification sent for contact: #{c.name}"} (#{c.base_name})"
-        
-        applog(condition.watch, :info, msg % [])
+        begin
+          c.notify(message, Time.now, spec[:priority], spec[:category], host)
+          msg = "#{condition.watch.name} #{c.info ? c.info : "notification sent for contact: #{c.name}"} (#{c.base_name})"
+          applog(condition.watch, :info, msg % [])
+        rescue Exception => e
+          applog(condition.watch, :error, "#{e.message} #{e.backtrace}")
+          msg = "#{condition.watch.name} Failed to deliver notification for contact: #{c.name} (#{c.base_name})"
+          applog(condition.watch, :error, msg % [])
+        end
       end
     end
   end

@@ -2,7 +2,8 @@ module God
   class Process
     WRITES_PID = [:start, :restart]
     
-    attr_accessor :name, :uid, :gid, :log, :log_cmd, :start, :stop, :restart, :unix_socket, :chroot, :env
+    attr_accessor :name, :uid, :gid, :log, :log_cmd, :start, :stop, :restart,
+                  :unix_socket, :chroot, :env, :dir
     
     def initialize
       self.log = '/dev/null'
@@ -25,13 +26,17 @@ module God
     
     def file_writable?(file)
       pid = fork do
-        uid_num = Etc.getpwnam(self.uid).uid if self.uid
-        gid_num = Etc.getgrnam(self.gid).gid if self.gid
+        begin
+          uid_num = Etc.getpwnam(self.uid).uid if self.uid
+          gid_num = Etc.getgrnam(self.gid).gid if self.gid
 
-        ::Dir.chroot(self.chroot) if self.chroot
-        ::Process.groups = [gid_num] if self.gid
-        ::Process::Sys.setgid(gid_num) if self.gid
-        ::Process::Sys.setuid(uid_num) if self.uid
+          ::Dir.chroot(self.chroot) if self.chroot
+          ::Process.groups = [gid_num] if self.gid
+          ::Process::Sys.setgid(gid_num) if self.gid
+          ::Process::Sys.setuid(uid_num) if self.uid
+        rescue ArgumentError, Errno::EPERM, Errno::ENOENT
+          exit(1)
+        end
 
         File.writable?(file_in_chroot(file)) ? exit(0) : exit(1)
       end
@@ -52,12 +57,6 @@ module God
         applog(self, :error, "No start command was specified")
       end
       
-      # self-daemonizing processes must specify a stop command
-      if !@tracking_pid && self.stop.nil?
-        valid = false
-        applog(self, :error, "No stop command was specified")
-      end
-      
       # uid must exist if specified
       if self.uid
         begin
@@ -75,6 +74,17 @@ module God
         rescue ArgumentError
           valid = false
           applog(self, :error, "GID for '#{self.gid}' does not exist")
+        end
+      end
+      
+      # dir must exist and be a directory if specified
+      if self.dir
+        if !File.exist?(self.dir)
+          valid = false
+          applog(self, :error, "Specified directory '#{self.dir}' does not exist")
+        elsif !File.directory?(self.dir)
+          valid = false
+          applog(self, :error, "Specified directory '#{self.dir}' is not a directory")
         end
       end
       
@@ -113,12 +123,12 @@ module God
       if self.chroot
         if !File.directory?(self.chroot)
           valid = false
-          LOG.log(self, :error, "CHROOT directory '#{self.chroot}' does not exist")
+          applog(self, :error, "CHROOT directory '#{self.chroot}' does not exist")
         end
 
         if !File.exist?(File.join(self.chroot, '/dev/null'))
           valid = false
-          LOG.log(self, :error, "CHROOT directory '#{self.chroot}' does not contain '/dev/null'")
+          applog(self, :error, "CHROOT directory '#{self.chroot}' does not contain '/dev/null'")
         end
       end
       
@@ -281,7 +291,8 @@ module God
         ::Process.groups = [gid_num] if self.gid
         ::Process::Sys.setgid(gid_num) if self.gid
         ::Process::Sys.setuid(uid_num) if self.uid
-        Dir.chdir "/"
+        self.dir ||= '/'
+        Dir.chdir self.dir
         $0 = command
         STDIN.reopen "/dev/null"
         if self.log_cmd

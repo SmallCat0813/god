@@ -11,8 +11,8 @@ module God
     attr_accessor :grace, :start_grace, :stop_grace, :restart_grace
     
     extend Forwardable
-    def_delegators :@process, :name, :uid, :gid, :start, :stop, :restart,
-                              :name=, :uid=, :gid=, :start=, :stop=, :restart=,
+    def_delegators :@process, :name, :uid, :gid, :start, :stop, :restart, :dir,
+                              :name=, :uid=, :gid=, :start=, :stop=, :restart=, :dir=,
                               :pid_file, :pid_file=, :log, :log=, :log_cmd, :log_cmd=, :alive?, :pid,
                               :unix_socket, :unix_socket=, :chroot, :chroot=, :env, :env=, :signal
     # 
@@ -104,7 +104,7 @@ module God
     ###########################################################################
     
     def action(a, c = nil)
-      if Thread.current != self.driver.thread
+      if !self.driver.in_driver_context?
         # called from outside Driver
         
         # send an async message to Driver
@@ -177,6 +177,7 @@ module God
     
     def unregister!
       God.registry.remove(@process)
+      super
     end
   end
   

@@ -1,3 +1,4 @@
+require 'rubygems'
 require File.join(File.dirname(__FILE__), *%w[.. lib god])
 God::EventHandler.load
 
@@ -90,19 +91,7 @@ ensure
   $VERBOSE = old_verbose
 end
 
-def no_stdout
-  old_stdout = $stdout.dup
-  $stdout.reopen(File.open((PLATFORM =~ /mswin/ ? "NUL" : "/dev/null"), 'w'))
-  yield
-  $stdout.reopen(old_stdout)
-end
-
-def no_stderr
-  old_stderr = $stderr.dup
-  $stderr.reopen(File.open((PLATFORM =~ /mswin/ ? "NUL" : "/dev/null"), 'w'))
-  yield
-  $stderr.reopen(old_stderr)
-end
+LOG.instance_variable_set(:@io, StringIO.new('/dev/null'))
 
 module Kernel
   def abort(text)

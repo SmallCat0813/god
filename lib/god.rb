@@ -146,8 +146,6 @@ class Module
 end
 
 module God
-  VERSION = '0.7.11'
-  
   LOG_BUFFER_SIZE_DEFAULT = 100
   PID_FILE_DIRECTORY_DEFAULTS = ['/var/run/god', '~/.god/pids']
   DRB_PORT_DEFAULT = 17165
@@ -418,7 +416,7 @@ module God
       when "restart"
         items.each { |w| jobs << Thread.new { w.move(:restart) } }
       when "stop"
-        items.each { |w| jobs << Thread.new { w.unmonitor.action(:stop) if w.state != :unmonitored } }
+        items.each { |w| jobs << Thread.new { w.action(:stop); w.unmonitor if w.state != :unmonitored } }
       when "unmonitor"
         items.each { |w| jobs << Thread.new { w.unmonitor if w.state != :unmonitored } }
       when "remove"
@@ -534,6 +532,9 @@ module God
       watches = self.pending_watches.dup
       self.pending_watches.clear
       self.pending_watch_states.clear
+
+      # make sure we quit capturing when we're done
+      LOG.finish_capture
     rescue Exception => e
       # don't ever let running_load take down god
       errors << LOG.finish_capture
@@ -624,6 +625,11 @@ module God
     self.main.join
   end
   
+  def self.version
+    yml = YAML.load(File.read(File.join(File.dirname(__FILE__), *%w[.. VERSION.yml])))
+    "#{yml[:major]}.#{yml[:minor]}.#{yml[:patch]}"
+  end
+  
   # To be called on program exit to start god
   #
   # Returns nothing
@@ -652,7 +658,7 @@ module God
     
     list.select do |item|
       item =~ Regexp.new(regex)
-    end
+    end.sort_by { |x| x.size }
   end
 end
 

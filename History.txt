@@ -1,6 +1,87 @@
-== 0.7.12 /
-  * Buf Fixes
+== 0.8.0 / 2009-11-30
+  * Minor Enhancements
+    * Rubygems decontamination
+    * Use Monitor instead of Mutex to provide ability to wait with a timeout
+    * Only generate log messages when they're being used
+    * Remove usage of Thread.critical in DriverEventQueue
+    * Update to work with latest bleak-house
+    * Cache some frequent lookups to reduce object creation
+    * Changing the @io.print call in SimpleLogger to not concatenate
+      the formatted results before printing
+  * Bug fixes
+    * Make sure we don't leak hash slots when processes die
+    * Make sure the driver is shutdown on Task#unregister!
+    * Fix memory leak when issuing "god load" successfully
+    * Fix defunct process
+
+== NOTE
+  At this point I will stop giving credit in the history. Look at the author
+  and committer in the commit for that info.
+
+== 0.7.22 / 2009-10-29
+  * Minor Enhancements
+    * Save ARGV so we can get access to it later if we want [github.com/eric]
+
+== 0.7.21 / 2009-10-29
+  * Minor Enhancements
+    * Cache some frequent lookups to reduce object creation [github.com/eric]
+    * Try to make SimpleLogger less leaky [github.com/eric]
+
+== 0.7.20 / 2009-09-24
+  * Minor Enhancements
+    * Rewrite `god status` command to be not as horrible. Add ability to get
+      status for individual tasks.
+
+== 0.7.19 / 2009-09-21
+  * Minor Enhancements
+    * Teach `god status` to take a task name as a param and return
+      an exit code of 0 if all watches are up or a non-zero exit code
+      (equal to the number of non-up watches) if they are not.
+
+== 0.7.18 / 2009-09-09
+  * Minor Enhancements
+    * Better handling of unexpected exceptions in conditions
+    * Added support for running processes in a directory other than '/' [github.com/samhendley]
+  * Bug Fixes
+    * Generate an actual unique identifier for email contact [github.com/underley]
+
+== 0.7.17 / 2009-08-25
+  * Bug Fixes
+    * Fix the glob and directory config loading for -c option
+
+== 0.7.16 / 2009-08-24
+  * Minor Enhancements
+    * Better logging for disk_usage condition [github.com/lettherebecode]
+  * Bug Fixes
+    * Only sleep if driver delay is > 0 [github.com/ps2]
+    * Rescue Timeout::Error exception due to smtp server timing out [github.com/ps2]
+    * Disk usage condition should use `df -P` to prevent line splitting [github.com/mseppae]
+    * Always require YAML so binary works on dumb systems
+
+== 0.7.15 / 2009-08-19
+  * Minor Enhancements
+    * Support SSL Campfire connections [github.com/eric]
+    * Allow wildcards in -c configuration file option
+
+== 0.7.14 / 2009-08-10
+  * Minor Enhancements
+    * Only store log lines when a client wishes to see them
+    * Add an lsb-compliant init script into god/init [Woody Peterson]
+    * Never require stop command; use default killer if none is specified
+  * Bug Fixes
+    * Fix redefinition error for time.h and allow it to compile on Ubuntu Edgy [github.com/tbuser]
+    * Fix a memory leak in jabber by adding a call to jabber_client.close [github.com/woahdae]
+    * Make jabber code manage one connection to make it faster, use less memory,
+      and not leak [github.com/woahdae]
+
+== 0.7.13 / 2009-05-04
+  * Bug Fixes
+    * Auto daemonized processes are now stopped/unmonitored correctly [github.com/jcapote]
+
+== 0.7.12 / 2008-12-10
+  * Bug Fixes
     * Fix capistrano deployability [github.com/eric]
+    * Fix event handling [brianw]
 
 == 0.7.11 / 2008-11-14
   * Bug Fixes
