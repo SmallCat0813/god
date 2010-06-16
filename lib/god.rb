@@ -151,13 +151,15 @@ class Module
 end
 
 module God
-  VERSION = '0.9.0'
+  VERSION = '0.10.1'
   LOG_BUFFER_SIZE_DEFAULT = 100
   PID_FILE_DIRECTORY_DEFAULTS = ['/var/run/god', '~/.god/pids']
   DRB_PORT_DEFAULT = 17165
   DRB_ALLOW_DEFAULT = ['127.0.0.1']
   LOG_LEVEL_DEFAULT = :info
   TERMINATE_TIMEOUT_DEFAULT = 10
+  STOP_TIMEOUT_DEFAULT = 10
+  STOP_SIGNAL_DEFAULT = 'TERM'
   
   class << self
     # user configurable
